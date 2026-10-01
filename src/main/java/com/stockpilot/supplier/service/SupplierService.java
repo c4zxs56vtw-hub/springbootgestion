@@ -1,6 +1,9 @@
 package com.stockpilot.supplier.service;
 
 import com.stockpilot.common.exception.ResourceNotFoundException;
+import com.stockpilot.common.exception.SupplierInUseException;
+import com.stockpilot.product.model.ProductStatus;
+import com.stockpilot.product.repository.ProductRepository;
 import com.stockpilot.supplier.dto.SupplierPageResponse;
 import com.stockpilot.supplier.dto.SupplierResponse;
 import com.stockpilot.supplier.model.Supplier;
@@ -15,9 +18,14 @@ import java.util.List;
 public class SupplierService {
 
     private final SupplierRepository supplierRepository;
+    private final ProductRepository productRepository;
 
-    public SupplierService(SupplierRepository supplierRepository) {
+    public SupplierService(
+            SupplierRepository supplierRepository,
+            ProductRepository productRepository
+    ) {
         this.supplierRepository = supplierRepository;
+        this.productRepository = productRepository;
     }
 
     public Supplier create(
@@ -76,13 +84,29 @@ public class SupplierService {
 
     public void delete(Long id) {
 
-        if (!supplierRepository.existsById(id)) {
-            throw new ResourceNotFoundException(
-                    "Fournisseur introuvable avec l'id : " + id
+        Supplier supplier = supplierRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Fournisseur introuvable avec l'id : " + id
+                        )
+                );
+
+        boolean supplierInUse =
+                productRepository.existsBySupplierIdAndStatus(
+                        id,
+                        ProductStatus.ACTIVE
+                );
+
+        if (supplierInUse) {
+            throw new SupplierInUseException(
+                    "Impossible de supprimer ce fournisseur car il est utilisé par des produits actifs"
             );
         }
 
-        supplierRepository.deleteById(id);
+        supplierRepository.deleteById(
+                supplier.getId()
+        );
     }
 
     public SupplierPageResponse findAll(

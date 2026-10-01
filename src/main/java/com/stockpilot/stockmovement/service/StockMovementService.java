@@ -4,6 +4,7 @@ import com.stockpilot.stockmovement.dto.StockMovementPageResponse;
 import java.util.Comparator;
 import java.util.List;
 import com.stockpilot.common.exception.InsufficientStockException;
+import com.stockpilot.common.exception.InvalidMovementTypeException;
 import com.stockpilot.common.exception.ProductArchivedException;
 import com.stockpilot.common.exception.ResourceNotFoundException;
 import com.stockpilot.product.model.Product;
@@ -95,8 +96,8 @@ public class StockMovementService {
         }
 
         if (request.getType() == MovementType.ADJUSTMENT) {
-            throw new IllegalArgumentException(
-                    "ADJUSTMENT ne peut pas être créé depuis cette opération"
+            throw new InvalidMovementTypeException(
+                    "Le type ADJUSTMENT doit être créé depuis l'inventaire"
             );
         }
 

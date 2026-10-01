@@ -4,7 +4,10 @@ import com.stockpilot.category.dto.CategoryPageResponse;
 import com.stockpilot.category.dto.CategoryResponse;
 import com.stockpilot.category.model.Category;
 import com.stockpilot.category.repository.CategoryRepository;
+import com.stockpilot.common.exception.CategoryInUseException;
 import com.stockpilot.common.exception.ResourceNotFoundException;
+import com.stockpilot.product.model.ProductStatus;
+import com.stockpilot.product.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -15,9 +18,14 @@ import java.util.List;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
 
-    public CategoryService(CategoryRepository categoryRepository) {
+    public CategoryService(
+            CategoryRepository categoryRepository,
+            ProductRepository productRepository
+    ) {
         this.categoryRepository = categoryRepository;
+        this.productRepository = productRepository;
     }
 
     public Category create(
@@ -150,12 +158,26 @@ public class CategoryService {
     }
     public void delete(Long id) {
 
-        if (!categoryRepository.existsById(id)) {
-            throw new ResourceNotFoundException(
-                    "La catégorie avec l'id " + id + " n'existe pas"
+        Category category = categoryRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Catégorie introuvable avec l'id : " + id
+                        )
+                );
+
+        boolean categoryInUse =
+                productRepository.existsByCategoryIdAndStatus(
+                        id,
+                        ProductStatus.ACTIVE
+                );
+
+        if (categoryInUse) {
+            throw new CategoryInUseException(
+                    "Impossible de supprimer cette catégorie car elle est utilisée par des produits actifs"
             );
         }
 
-        categoryRepository.deleteById(id);
+        categoryRepository.deleteById(category.getId());
     }
 }

@@ -4,6 +4,7 @@ import com.stockpilot.category.model.Category;
 import com.stockpilot.category.repository.CategoryRepository;
 import com.stockpilot.common.exception.ProductArchivedException;
 import com.stockpilot.common.exception.ProductHasStockException;
+import com.stockpilot.common.exception.ProductIdentityLockedException;
 import com.stockpilot.common.exception.ResourceNotFoundException;
 import com.stockpilot.common.exception.SkuAlreadyExistsException;
 import com.stockpilot.product.dto.*;
@@ -15,6 +16,10 @@ import com.stockpilot.supplier.model.Supplier;
 import com.stockpilot.supplier.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
 import com.stockpilot.product.dto.ProductPageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.util.Comparator;
 import java.util.List;
@@ -155,109 +160,59 @@ public class ProductService {
             ProductStatus status,
             StockStatus stockStatus
     ) {
+        Sort.Direction direction =
+                sort.toLowerCase().endsWith(",desc")
+                        ? Sort.Direction.DESC
+                        : Sort.Direction.ASC;
 
-        List<Product> products = productRepository.findAll();
+        String sortField =
+                sort.split(",")[0];
 
-        if (q != null && !q.isBlank()) {
-            String search = q.toLowerCase();
-
-            products = products.stream()
-                    .filter(product ->
-                            product.getName().toLowerCase().contains(search)
-                                    ||
-                                    product.getSku().toLowerCase().contains(search)
-                    )
-                    .toList();
-        }
-
-        if (categoryId != null) {
-            products = products.stream()
-                    .filter(product ->
-                            product.getCategory() != null
-                                    &&
-                                    product.getCategory().getId().equals(categoryId)
-                    )
-                    .toList();
-        }
-
-        if (supplierId != null) {
-            products = products.stream()
-                    .filter(product ->
-                            product.getSupplier() != null
-                                    &&
-                                    product.getSupplier().getId().equals(supplierId)
-                    )
-                    .toList();
-        }
-
-        if (status != null) {
-            products = products.stream()
-                    .filter(product ->
-                            product.getStatus() == status
-                    )
-                    .toList();
-        }
-
-        if (stockStatus != null) {
-            products = products.stream()
-                    .filter(product ->
-                            product.getStockStatus() == stockStatus
-                    )
-                    .toList();
-        }
-
-        Comparator<Product> comparator =
-                Comparator.comparing(
-                        Product::getName,
-                        String.CASE_INSENSITIVE_ORDER
+        Pageable pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(direction, sortField)
                 );
 
-        if ("name,desc".equalsIgnoreCase(sort)) {
-            comparator = comparator.reversed();
+        Page<Product> productPage;
+
+        if (q != null && !q.isBlank()) {
+            productPage =
+                    productRepository
+                            .findByNameContainingIgnoreCase(
+                                    q.trim(),
+                                    pageable
+                            );
+        } else {
+            productPage =
+                    productRepository.findAll(pageable);
         }
-
-        products = products.stream()
-                .sorted(comparator)
-                .toList();
-
-        long totalElements = products.size();
-
-        int totalPages =
-                (int) Math.ceil((double) totalElements / size);
-
-        int fromIndex = page * size;
-
-        if (fromIndex >= totalElements) {
-            return new ProductPageResponse(
-                    List.of(),
-                    page,
-                    size,
-                    totalElements,
-                    totalPages
-            );
-        }
-
-        int toIndex =
-                Math.min(fromIndex + size, products.size());
 
         List<ProductResponse> content =
-                products.subList(fromIndex, toIndex)
+                productPage.getContent()
                         .stream()
                         .map(this::toResponse)
                         .toList();
 
         return new ProductPageResponse(
                 content,
-                page,
-                size,
-                totalElements,
-                totalPages
+                productPage.getNumber(),
+                productPage.getSize(),
+                productPage.getTotalElements(),
+                productPage.getTotalPages()
         );
     }
 
     public Product update(Long id, CreateProductRequest request) {
 
         Product product = findById(id);
+
+        if (!product.getSku().equals(request.getSku())) {
+            throw new ProductIdentityLockedException(
+                    "Le SKU d'un produit ne peut pas être modifié"
+            );
+        }
 
         Category category = categoryRepository
                 .findById(request.getCategoryId())
