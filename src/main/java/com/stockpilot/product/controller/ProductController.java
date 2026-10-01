@@ -16,9 +16,11 @@ import org.springframework.web.bind.annotation.*;
 public class ProductController {
 
     private final ProductService productService;
+    private final com.stockpilot.stockmovement.service.StockMovementService stockMovementService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, com.stockpilot.stockmovement.service.StockMovementService stockMovementService) {
         this.productService = productService;
+        this.stockMovementService = stockMovementService;
     }
 
     @PostMapping
@@ -63,13 +65,16 @@ public class ProductController {
         return productService.toResponse(product);
     }
 
-    @GetMapping("/alerts/out-of-stock")
-    public ProductPageResponse getOutOfStock(
+    @GetMapping("/{id}/movements")
+    public com.stockpilot.stockmovement.dto.StockMovementPageResponse getProductMovements(
+            @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "name,asc") String sort
+            @RequestParam(defaultValue = "createdAt,desc") String sort
     ) {
-        return productService.findOutOfStock(page, size, sort);
+        // verify product exists
+        productService.findById(id);
+        return stockMovementService.findByProductId(id, page, size, sort);
     }
 
     @PutMapping("/{id}")
