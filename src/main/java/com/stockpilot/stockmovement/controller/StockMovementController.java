@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import com.stockpilot.stockmovement.dto.StockMovementPageResponse;
 import com.stockpilot.stockmovement.model.MovementType;
 import org.springframework.format.annotation.DateTimeFormat;
+import java.util.UUID;
 
 import java.time.Instant;
 
@@ -28,10 +29,14 @@ public class StockMovementController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public StockMovementResponse create(
+            @RequestHeader("Idempotency-Key") UUID idempotencyKey,
             @Valid @RequestBody CreateMovementRequest request
     ) {
         StockMovement movement =
-                stockMovementService.create(request);
+                stockMovementService.create(
+                        idempotencyKey,
+                        request
+                );
 
         return stockMovementService.toResponse(movement);
     }

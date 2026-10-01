@@ -127,5 +127,41 @@ public class GlobalExceptionHandler {
                 "INSUFFICIENT_STOCK",
                 List.of()
         );
+
+
+
+    }
+
+    @ExceptionHandler(StockVersionConflictException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ProblemDetailsResponse handleStockVersionConflict(
+            StockVersionConflictException exception,
+            HttpServletRequest request
+    ) {
+        return new ProblemDetailsResponse(
+                "urn:stockpilot:problem:stock-version-conflict",
+                "Conflit de version du stock",
+                HttpStatus.CONFLICT.value(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                "STOCK_VERSION_CONFLICT",
+                List.of()
+        );
+    }
+    @ExceptionHandler(IdempotencyKeyReusedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ProblemDetailsResponse handleIdempotencyKeyReused(
+            IdempotencyKeyReusedException exception,
+            HttpServletRequest request
+    ) {
+        return new ProblemDetailsResponse(
+                "urn:stockpilot:problem:idempotency-key-reused",
+                "Clé d'idempotence déjà utilisée",
+                HttpStatus.CONFLICT.value(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                "IDEMPOTENCY_KEY_REUSED",
+                List.of()
+        );
     }
 }
