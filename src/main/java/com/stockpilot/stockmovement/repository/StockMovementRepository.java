@@ -1,0 +1,15 @@
+package com.stockpilot.stockmovement.repository;
+
+import com.stockpilot.stockmovement.model.StockMovement;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface StockMovementRepository {
+
+    StockMovement save(StockMovement stockMovement);
+
+    List<StockMovement> findAll();
+
+    Optional<StockMovement> findById(Long id);
+}

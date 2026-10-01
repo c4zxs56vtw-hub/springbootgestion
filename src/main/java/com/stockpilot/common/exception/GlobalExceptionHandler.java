@@ -110,4 +110,22 @@ public class GlobalExceptionHandler {
                 List.of()
         );
     }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ProblemDetailsResponse handleInsufficientStock(
+            InsufficientStockException exception,
+            HttpServletRequest request
+    ) {
+
+        return new ProblemDetailsResponse(
+                "urn:stockpilot:problem:insufficient-stock",
+                "Stock insuffisant",
+                HttpStatus.CONFLICT.value(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                "INSUFFICIENT_STOCK",
+                List.of()
+        );
+    }
 }
