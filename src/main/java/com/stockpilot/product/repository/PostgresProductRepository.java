@@ -42,6 +42,11 @@ public class PostgresProductRepository
     }
 
     @Override
+    public Page<Product> findByStockStatus(com.stockpilot.product.model.StockStatus stockStatus, Pageable pageable) {
+        return jpaRepository.findByStockStatus(stockStatus, pageable);
+    }
+
+    @Override
     public Optional<Product> findById(Long id) {
         return jpaRepository.findById(id);
     }
