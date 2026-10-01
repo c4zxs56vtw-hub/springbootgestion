@@ -1,0 +1,332 @@
+openapi: 3.1.0
+info:
+  title: StockPilot API
+  description: Spécification des endpoints pour la gestion des produits, des mouvements de stock et des alertes.
+  version: 1.1.0
+
+servers:
+  - url: http://localhost:8080
+    description: Serveur local
+
+paths:
+  /api/v1/products:
+    get:
+      summary: Recherche globale et filtrage des produits
+      description: Récupère la liste paginée des produits. Le paramètre `q` permet de faire une recherche globale sur le nom et le SKU (insensible à la casse). Les autres paramètres permettent de filtrer précisément les résultats directement en base de données via JPA Specifications.
+      tags:
+        - Products
+      parameters:
+        - name: q
+          in: query
+          description: Terme de recherche (filtre sur le nom ou le SKU)
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          description: Identifiant de la catégorie
+          schema:
+            type: integer
+            format: int64
+        - name: supplierId
+          in: query
+          description: Identifiant du fournisseur
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          description: Statut du produit (ex. ACTIVE, ARCHIVED)
+          schema:
+            type: string
+        - name: stockStatus
+          in: query
+          description: Statut du stock (ex. IN_STOCK, LOW_STOCK, OUT_OF_STOCK)
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Numéro de la page (0 par défaut)
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: Taille de la page (20 par défaut)
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          description: Critère de tri (ex. name,asc)
+          schema:
+            type: string
+            default: name,asc
+      responses:
+        '200':
+          description: Liste paginée des produits
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPageResponse'
+
+  /api/v1/products/{id}/movements:
+    get:
+      summary: Historique détaillé d'un produit
+      description: Affiche la liste paginée de tous les mouvements (entrées, sorties, ajustements) associés à un produit spécifique, avec les quantités avant/après, la date, la référence, et le fournisseur.
+      tags:
+        - Products
+        - Stock Movements
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifiant du produit
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: createdAt,desc
+      responses:
+        '200':
+          description: Liste paginée des mouvements du produit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockMovementPageResponse'
+        '404':
+          description: Produit introuvable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /api/v1/alerts/out-of-stock:
+    get:
+      summary: Alertes de produits en rupture de stock
+      description: Récupère la liste paginée des produits dont la quantité est à zéro (StockStatus = OUT_OF_STOCK).
+      tags:
+        - Alerts
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: name,asc
+      responses:
+        '200':
+          description: Liste paginée des produits en rupture
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPageResponse'
+
+  /api/v1/alerts/low-stock:
+    get:
+      summary: Alertes de produits en stock faible
+      description: Récupère la liste paginée des produits dont la quantité est inférieure ou égale au seuil de sécurité (StockStatus = LOW_STOCK).
+      tags:
+        - Alerts
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: name,asc
+      responses:
+        '200':
+          description: Liste paginée des produits en stock faible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPageResponse'
+
+components:
+  schemas:
+    ProductPageResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    ProductResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        sku:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        unit:
+          type: string
+        purchasePrice:
+          type: string
+        salePrice:
+          type: string
+        quantityInStock:
+          type: integer
+        minimumStock:
+          type: integer
+        status:
+          type: string
+        stockStatus:
+          type: string
+        stockVersion:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        category:
+          type: object
+          properties:
+            id:
+              type: integer
+              format: int64
+            name:
+              type: string
+        supplier:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              format: int64
+            name:
+              type: string
+
+    StockMovementPageResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/StockMovementResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    StockMovementResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        product:
+          type: object
+          properties:
+            id:
+              type: integer
+              format: int64
+            sku:
+              type: string
+            name:
+              type: string
+            unit:
+              type: string
+        type:
+          type: string
+        quantityBefore:
+          type: integer
+        quantityDelta:
+          type: integer
+        quantityAfter:
+          type: integer
+        supplier:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              format: int64
+            name:
+              type: string
+        reference:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+        fieldErrors:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
