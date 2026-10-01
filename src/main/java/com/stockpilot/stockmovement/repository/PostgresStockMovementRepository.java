@@ -29,6 +29,11 @@ public class PostgresStockMovementRepository
     }
 
     @Override
+    public org.springframework.data.domain.Page<StockMovement> findByProductId(Long productId, org.springframework.data.domain.Pageable pageable) {
+        return jpaRepository.findByProductId(productId, pageable);
+    }
+
+    @Override
     public Optional<StockMovement> findById(Long id) {
         return jpaRepository.findById(id);
     }

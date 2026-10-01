@@ -247,6 +247,31 @@ public class StockMovementService {
                 : value.trim();
     }
 
+    public StockMovementPageResponse findByProductId(Long productId, int page, int size, String sort) {
+        org.springframework.data.domain.Sort.Direction direction =
+                sort.toLowerCase().endsWith(",desc") ? org.springframework.data.domain.Sort.Direction.DESC : org.springframework.data.domain.Sort.Direction.ASC;
+        String sortField = sort.split(",")[0];
+
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(direction, sortField));
+
+        org.springframework.data.domain.Page<StockMovement> movementPage =
+                stockMovementRepository.findByProductId(productId, pageable);
+
+        List<StockMovementResponse> content = movementPage.getContent()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+
+        return new StockMovementPageResponse(
+                content,
+                movementPage.getNumber(),
+                movementPage.getSize(),
+                movementPage.getTotalElements(),
+                movementPage.getTotalPages()
+        );
+    }
+
     public StockMovementPageResponse findAll(
             int page,
             int size,
