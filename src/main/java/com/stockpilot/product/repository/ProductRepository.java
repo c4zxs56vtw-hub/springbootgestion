@@ -18,6 +18,8 @@ public interface ProductRepository {
 
     Page<Product> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
+    Page<Product> findByStockStatus(com.stockpilot.product.model.StockStatus stockStatus, Pageable pageable);
+
     Optional<Product> findById(Long id);
 
     boolean existsBySku(String sku);
