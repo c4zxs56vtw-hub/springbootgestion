@@ -204,6 +204,39 @@ public class ProductService {
         );
     }
 
+    public ProductPageResponse findOutOfStock(int page, int size, String sort) {
+        Sort.Direction direction =
+                sort.toLowerCase().endsWith(",desc")
+                        ? Sort.Direction.DESC
+                        : Sort.Direction.ASC;
+
+        String sortField =
+                sort.split(",")[0];
+
+        Pageable pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(direction, sortField)
+                );
+
+        Page<Product> productPage = productRepository.findByStockStatus(StockStatus.OUT_OF_STOCK, pageable);
+
+        List<ProductResponse> content =
+                productPage.getContent()
+                        .stream()
+                        .map(this::toResponse)
+                        .toList();
+
+        return new ProductPageResponse(
+                content,
+                productPage.getNumber(),
+                productPage.getSize(),
+                productPage.getTotalElements(),
+                productPage.getTotalPages()
+        );
+    }
+
     public Product update(Long id, CreateProductRequest request) {
 
         Product product = findById(id);
