@@ -16,4 +16,6 @@ public interface ProductJpaRepository
     boolean existsBySupplierIdAndStatus(Long supplierId, ProductStatus status);
 
     Page<Product> findByNameContainingIgnoreCase(String name, Pageable pageable);
+
+    Page<Product> findByStockStatus(com.stockpilot.product.model.StockStatus stockStatus, Pageable pageable);
 }

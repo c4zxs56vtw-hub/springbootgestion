@@ -63,6 +63,15 @@ public class ProductController {
         return productService.toResponse(product);
     }
 
+    @GetMapping("/alerts/low-stock")
+    public ProductPageResponse getLowStock(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "name,asc") String sort
+    ) {
+        return productService.findLowStock(page, size, sort);
+    }
+
     @PutMapping("/{id}")
     public ProductResponse update(
             @PathVariable Long id,
