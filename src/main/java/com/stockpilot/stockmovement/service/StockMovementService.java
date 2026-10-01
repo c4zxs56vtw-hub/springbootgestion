@@ -21,28 +21,63 @@ import com.stockpilot.supplier.model.Supplier;
 import com.stockpilot.supplier.repository.SupplierRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.stockpilot.common.idempotency.service.IdempotencyService;
 
+import java.util.UUID;
 import java.time.Instant;
 
 @Service
 public class StockMovementService {
+    private final IdempotencyService idempotencyService;
 
     private final StockMovementRepository stockMovementRepository;
     private final ProductRepository productRepository;
     private final SupplierRepository supplierRepository;
 
-    public StockMovementService(
+    public  StockMovementService(
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
-            SupplierRepository supplierRepository
+            SupplierRepository supplierRepository,
+            IdempotencyService idempotencyService
     ) {
         this.stockMovementRepository = stockMovementRepository;
         this.productRepository = productRepository;
         this.supplierRepository = supplierRepository;
+        this.idempotencyService = idempotencyService;
     }
-
+    
     @Transactional
-    public StockMovement create(CreateMovementRequest request) {
+    public StockMovement create(
+            UUID idempotencyKey,
+            CreateMovementRequest request
+    ) {
+
+        String requestData =
+                request.getProductId()
+                        + "|"
+                        + request.getType()
+                        + "|"
+                        + request.getQuantity()
+                        + "|"
+                        + request.getSupplierId()
+                        + "|"
+                        + request.getReference()
+                        + "|"
+                        + request.getNote();
+
+        String requestHash =
+                idempotencyService.hash(requestData);
+
+        Long existingMovementId =
+                idempotencyService.findExisting(
+                        idempotencyKey,
+                        "STOCK_MOVEMENT_CREATE",
+                        requestHash
+                );
+
+        if (existingMovementId != null) {
+            return findById(existingMovementId);
+        }
 
         Product product = productRepository
                 .findById(request.getProductId())
@@ -131,7 +166,17 @@ public class StockMovementService {
                 Instant.now()
         );
 
-        return stockMovementRepository.save(movement);
+        StockMovement savedMovement =
+                stockMovementRepository.save(movement);
+
+        idempotencyService.remember(
+                idempotencyKey,
+                "STOCK_MOVEMENT_CREATE",
+                requestHash,
+                savedMovement.getId()
+        );
+
+        return savedMovement;
     }
 
     public StockMovement findById(Long id) {
