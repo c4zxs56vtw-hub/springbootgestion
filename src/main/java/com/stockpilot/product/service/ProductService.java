@@ -23,8 +23,11 @@ import org.springframework.data.domain.Sort;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.ArrayList;
 
 import java.time.Instant;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Predicate;
 
 @Service
 public class ProductService {
@@ -165,29 +168,40 @@ public class ProductService {
                         ? Sort.Direction.DESC
                         : Sort.Direction.ASC;
 
-        String sortField =
-                sort.split(",")[0];
+        String sortField = sort.split(",")[0];
 
-        Pageable pageable =
-                PageRequest.of(
-                        page,
-                        size,
-                        Sort.by(direction, sortField)
-                );
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
 
-        Page<Product> productPage;
+        Specification<Product> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
 
-        if (q != null && !q.isBlank()) {
-            productPage =
-                    productRepository
-                            .findByNameContainingIgnoreCase(
-                                    q.trim(),
-                                    pageable
-                            );
-        } else {
-            productPage =
-                    productRepository.findAll(pageable);
-        }
+            if (q != null && !q.isBlank()) {
+                String search = "%" + q.trim().toLowerCase() + "%";
+                Predicate nameLike = cb.like(cb.lower(root.get("name")), search);
+                Predicate skuLike = cb.like(cb.lower(root.get("sku")), search);
+                predicates.add(cb.or(nameLike, skuLike));
+            }
+
+            if (categoryId != null) {
+                predicates.add(cb.equal(root.get("category").get("id"), categoryId));
+            }
+
+            if (supplierId != null) {
+                predicates.add(cb.equal(root.get("supplier").get("id"), supplierId));
+            }
+
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            if (stockStatus != null) {
+                predicates.add(cb.equal(root.get("stockStatus"), stockStatus));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
 
         List<ProductResponse> content =
                 productPage.getContent()

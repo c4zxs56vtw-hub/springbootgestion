@@ -37,6 +37,11 @@ public class PostgresProductRepository
     }
 
     @Override
+    public Page<Product> findAll(org.springframework.data.jpa.domain.Specification<Product> spec, Pageable pageable) {
+        return jpaRepository.findAll(spec, pageable);
+    }
+
+    @Override
     public Page<Product> findByNameContainingIgnoreCase(String name, Pageable pageable) {
         return jpaRepository.findByNameContainingIgnoreCase(name, pageable);
     }
