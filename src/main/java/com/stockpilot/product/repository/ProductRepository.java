@@ -16,6 +16,8 @@ public interface ProductRepository {
 
     Page<Product> findAll(Pageable pageable);
 
+    Page<Product> findAll(org.springframework.data.jpa.domain.Specification<Product> spec, Pageable pageable);
+
     Page<Product> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
     Page<Product> findByStockStatus(com.stockpilot.product.model.StockStatus stockStatus, Pageable pageable);
